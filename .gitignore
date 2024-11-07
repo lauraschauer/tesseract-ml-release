@@ -9,4 +9,5 @@ Tesseract.egg-info/*
 /features/
 build/*
 dist/*egg*
-
+# Data
+data/
