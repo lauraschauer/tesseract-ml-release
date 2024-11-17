@@ -46,10 +46,20 @@ def assert_class_distribution(y, positive_rate, variance):
     return diff <= variance
 
 
-def search_optimal_train_ratio(clf, X_train, y_train, t_train,
-                               proper_train_size, validation_size, granularity,
-                               start_tr_rate=None, end_tr_rate=0.6, step=0.05,
-                               test_noise=0.00, metric='f1'):
+def search_optimal_train_ratio(
+    clf,
+    X_train,
+    y_train,
+    t_train,
+    proper_train_size,
+    validation_size,
+    granularity,
+    start_tr_rate=None,
+    end_tr_rate=0.5,
+    step=0.05,
+    test_noise=0.00,
+    metric="f1",
+):
     """Find the optimal training ratio in order to maximise the given metric.
 
     This function performs a grid search between start_tr_rate and end_tr_rate,
@@ -93,11 +103,16 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
     """
     import tesseract.temporal as temporal
     import tesseract.evaluation as evaluation
-                                   
+
     # Split again to get training and validation sets for finding K
     splits = temporal.time_aware_train_test_split(
-        X_train, y_train, t_train, train_size=proper_train_size,
-        test_size=validation_size, granularity=granularity)
+        X_train,
+        y_train,
+        t_train,
+        train_size=proper_train_size,
+        test_size=validation_size,
+        granularity=granularity,
+    )
 
     aut_list, error_list, fn_list, fp_list, total_list = [], [], [], [], []
 
@@ -105,8 +120,7 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
 
     if start_tr_rate is None:
         # Start one step below the natural rate of malware
-        start_tr_rate = max(
-            (round(float(natural_rate) / step) * step) - step, 0)
+        start_tr_rate = max((round(float(natural_rate) / step) * step) - step, 0)
 
     tr_proportions = np.arange(start_tr_rate, end_tr_rate + step, step)
 
@@ -117,9 +131,7 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
         te_proportions = np.arange(mid - test_noise, mid + test_noise, 0.01)
 
     for m in tr_proportions:
-        X_train_proper, _, \
-        y_train_proper, _, \
-        t_train_proper, _ = copy.deepcopy(splits)
+        X_train_proper, _, y_train_proper, _, t_train_proper, _ = copy.deepcopy(splits)
 
         # Downsample training to match percentage of malware n
         train_idxs = downsample_to_rate(y_train_proper, m)
@@ -133,9 +145,9 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
         fps, fns = [], []
         for n in te_proportions:
 
-            _, X_validations, \
-            _, y_validations, \
-            __, t_validations = copy.deepcopy(splits)
+            _, X_validations, _, y_validations, __, t_validations = copy.deepcopy(
+                splits
+            )
 
             for i, _ in enumerate(y_validations):
                 val_idxs = downsample_to_rate(y_validations[i], n)
@@ -144,13 +156,19 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
                 t_validations[i] = t_validations[i][val_idxs]
 
             # Compute results
-            results = evaluation.fit_predict_update(clf, X_train, X_validations,
-                                                    y_train, y_validations,
-                                                    t_train, t_validations)
+            results = evaluation.fit_predict_update(
+                clf,
+                X_train,
+                X_validations,
+                y_train,
+                y_validations,
+                t_train,
+                t_validations,
+            )
 
-            fps.append(np.sum(results['fp']))
-            fns.append(np.sum(results['fn']))
-            total.append(np.sum(results['p']) + np.sum(results['n']))
+            fps.append(np.sum(results["fp"]))
+            fns.append(np.sum(results["fn"]))
+            total.append(np.sum(results["p"]) + np.sum(results["n"]))
             errors.append(metrics.error_rate(results, metric))
             auts.append(metrics.aut(results, metric))
 
@@ -162,19 +180,30 @@ def search_optimal_train_ratio(clf, X_train, y_train, t_train,
         total_list.append(np.mean(total))
 
     return {
-        'errors': error_list,
-        'auts': aut_list,
-        'phis': tr_proportions,
-        'fn': fn_list,
-        'fp': fp_list,
-        'total': total_list
+        "errors": error_list,
+        "auts": aut_list,
+        "phis": tr_proportions,
+        "fn": fn_list,
+        "fp": fp_list,
+        "total": total_list,
     }
 
 
-def find_optimal_train_ratio(clf, X_train, y_train, t_train,
-                             proper_train_size, validation_size, granularity,
-                             start_tr_rate=None, end_tr_rate=0.6, step=0.05,
-                             test_noise=0.00, metric='f1', acceptable_errors=0):
+def find_optimal_train_ratio(
+    clf,
+    X_train,
+    y_train,
+    t_train,
+    proper_train_size,
+    validation_size,
+    granularity,
+    start_tr_rate=None,
+    end_tr_rate=0.6,
+    step=0.05,
+    test_noise=0.00,
+    metric="f1",
+    acceptable_errors=0,
+):
     """Given an acceptable threshold for errors, find the optimal train ratio.
 
     NOTE: The output of the search function that this wraps has undergone quite
@@ -202,22 +231,33 @@ def find_optimal_train_ratio(clf, X_train, y_train, t_train,
 
     """
     rates = search_optimal_train_ratio(
-        clf, X_train, y_train, t_train, proper_train_size,
-        validation_size, granularity, start_tr_rate, end_tr_rate,
-        step, test_noise, metric)
+        clf,
+        X_train,
+        y_train,
+        t_train,
+        proper_train_size,
+        validation_size,
+        granularity,
+        start_tr_rate,
+        end_tr_rate,
+        step,
+        test_noise,
+        metric,
+    )
 
-    phis, auts, errors = rates['phis'], rates['auts'], rates['errors']
+    phis, auts, errors = rates["phis"], rates["auts"], rates["errors"]
 
     for i in np.argsort(auts)[::-1]:
         if errors[i] <= acceptable_errors:
             return phis[i], auts[i], errors[i]
 
-    print('Warning: No training rate found that allows acceptable error rate')
+    print("Warning: No training rate found that allows acceptable error rate")
     return None
 
 
-def downsample_set(X, y, t, min_pos_rate, max_pos_rate=None,
-                   noise_deviation=0.0, fixed_size=False):
+def downsample_set(
+    X, y, t, min_pos_rate, max_pos_rate=None, noise_deviation=0.0, fixed_size=False
+):
     """Enforce a class distribution by downsampling.
 
     Args:
@@ -233,13 +273,15 @@ def downsample_set(X, y, t, min_pos_rate, max_pos_rate=None,
     Returns:
         tuple: A resized X, y and t
     """
-    new_idxs = downsample_to_rate(y, min_pos_rate, max_pos_rate,
-                                  noise_deviation, fixed_size)
+    new_idxs = downsample_to_rate(
+        y, min_pos_rate, max_pos_rate, noise_deviation, fixed_size
+    )
     return X[new_idxs], y[new_idxs], t[new_idxs]
 
 
-def downsample_to_rate(y, min_pos_rate, max_pos_rate=None,
-                       noise_deviation=0.0, fixed_size=False):
+def downsample_to_rate(
+    y, min_pos_rate, max_pos_rate=None, noise_deviation=0.0, fixed_size=False
+):
     """Enforce a class distribution by downsampling.
 
     Args:
@@ -262,8 +304,7 @@ def downsample_to_rate(y, min_pos_rate, max_pos_rate=None,
     max_pos_rate = utils.resolve_percentage(max_pos_rate)
 
     if not (0 <= min_pos_rate <= 1 or 0 <= max_pos_rate <= 1):
-        raise ValueError(
-            'Please supply a proportion in the interval [0, 1]')
+        raise ValueError("Please supply a proportion in the interval [0, 1]")
 
     n_pos, n_neg = np.sum(y), np.sum(y == 0)
 
@@ -295,8 +336,7 @@ def downsample_to_rate(y, min_pos_rate, max_pos_rate=None,
     if fixed_size:
         n_neg_to_choose = int((1 - pos_perc) * n_tot)
     else:
-        n_neg_to_choose = int(
-            (float(1 - pos_perc) / float(pos_perc)) * n_pos)
+        n_neg_to_choose = int((float(1 - pos_perc) / float(pos_perc)) * n_pos)
 
     if n_neg_to_choose > n_neg:
         n_neg_to_choose = n_neg
@@ -308,8 +348,7 @@ def downsample_to_rate(y, min_pos_rate, max_pos_rate=None,
     if fixed_size:
         n_pos_to_choose = int(pos_perc * n_tot)
     else:
-        n_pos_to_choose = int(
-            (float(pos_perc) / float(1 - pos_perc)) * n_neg)
+        n_pos_to_choose = int((float(pos_perc) / float(1 - pos_perc)) * n_neg)
 
     if n_pos_to_choose > n_pos:
         can_downsample_pos = False
@@ -329,17 +368,14 @@ def downsample_to_rate(y, min_pos_rate, max_pos_rate=None,
 
     # Downsample goodware
     if can_downsample_neg:
-        neg_idx_subsample = random.sample(list(neg_indexes),
-                                          n_neg_to_choose)
+        neg_idx_subsample = random.sample(list(neg_indexes), n_neg_to_choose)
 
     if can_downsample_pos:
-        pos_idx_subsample = random.sample(list(pos_indexes),
-                                          n_pos_to_choose)
+        pos_idx_subsample = random.sample(list(pos_indexes), n_pos_to_choose)
 
     if not (can_downsample_neg or can_downsample_pos):
         raise Exception("Downsampling failed")
 
-    sampled = np.hstack((np.array(neg_idx_subsample),
-                         np.array(pos_idx_subsample)))
+    sampled = np.hstack((np.array(neg_idx_subsample), np.array(pos_idx_subsample)))
 
     return np.array(sampled, dtype=int)

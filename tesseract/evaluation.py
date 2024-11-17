@@ -78,37 +78,37 @@ class Stage:
             * 0: Never activate.
 
         """
-        if self.schedule == 'first':
+        if self.schedule == "first":
             self.schedule = [True] + [False] * (total_periods - 1)
-        elif self.schedule == 'last':
+        elif self.schedule == "last":
             self.schedule = [False] * (total_periods - 1) + [True]
-        elif self.schedule in (1, '1'):
+        elif self.schedule in (1, "1"):
             self.schedule = [True] * total_periods
-        elif self.schedule in (0, '0'):
+        elif self.schedule in (0, "0"):
             self.schedule = [False] * total_periods
-        elif hasattr(self.schedule, '__iter__'):
+        elif hasattr(self.schedule, "__iter__"):
             self.schedule = [int(x) == 0 for x in self.schedule]
         else:
-            raise ValueError('Schedule `{}` cannot be understood.'.format(
-                self.schedule))
+            raise ValueError(
+                "Schedule `{}` cannot be understood.".format(self.schedule)
+            )
 
 
 class TrackingStage(Stage):
-    """
+    """ """
 
-    """
-
-    def __init__(self, schedule=1, tracking=True, interaction='intersection'):
+    def __init__(self, schedule=1, tracking=True, interaction="intersection"):
         super().__init__(schedule=schedule)
 
-        self._interactions = ('intersection', 'union', 'sym_diff', 'ignore')
+        self._interactions = ("intersection", "union", "sym_diff", "ignore")
 
         self.tracking = tracking
         self.interaction = interaction
 
         if interaction not in self._interactions:
-            raise ValueError('Interaction mode must be one of {}'.format(
-                self._interactions))
+            raise ValueError(
+                "Interaction mode must be one of {}".format(self._interactions)
+            )
 
     def merge_results(self, past, present):
         # Case for first test period in a cycle
@@ -116,18 +116,28 @@ class TrackingStage(Stage):
         if past is None:
             return present
 
-        if self.interaction == 'union':
+        if self.interaction == "union":
             return np.union1d(past, present)
-        elif self.interaction == 'intersection':
+        elif self.interaction == "intersection":
             return np.intersect1d(past, present)
-        elif self.interaction == 'sym_diff':
+        elif self.interaction == "sym_diff":
             return np.setxor1d(past, present)
 
 
-def fit_predict_update(clf, X_train, X_tests,
-                       y_train, y_tests, t_train, t_tests,
-                       fit_function=None, predict_function=None,
-                       rebalancers=(), rejectors=(), selectors=()):
+def fit_predict_update(
+    clf,
+    X_train,
+    X_tests,
+    y_train,
+    y_tests,
+    t_train,
+    t_tests,
+    fit_function=None,
+    predict_function=None,
+    rebalancers=(),
+    rejectors=(),
+    selectors=(),
+):
     """Sliding window classification of a timestamp partitioned dataset.
 
     This function assumes that the dataset has been partitioned into
@@ -251,16 +261,18 @@ def fit_predict_update(clf, X_train, X_tests,
 
     """
     fit_function = clf.fit if fit_function is None else fit_function
-    predict_function = (utils.select_prediction_function(clf, labels_only=True)
-                        if predict_function is None else predict_function)
+    predict_function = (
+        utils.select_prediction_function(clf, labels_only=True)
+        if predict_function is None
+        else predict_function
+    )
 
     for stage in tuple(rebalancers) + tuple(rejectors) + tuple(selectors):
         stage.resolve_schedule(len(X_tests))
 
     results = {}
     selected_indexes = None
-    for i, (X_test, y_test, t_test) in tqdm(enumerate(
-            zip(X_tests, y_tests, t_tests))):
+    for i, (X_test, y_test, t_test) in tqdm(enumerate(zip(X_tests, y_tests, t_tests))):
 
         # --------------------------------------------------------------- #
         # Make alterations to the dataset before testing (optional)       #
@@ -271,14 +283,14 @@ def fit_predict_update(clf, X_train, X_tests,
                 continue
 
             X_train, y_train, t_train = rebalancer.alter(
-                clf, X_train, y_train, t_train, X_test, y_test, t_test)
+                clf, X_train, y_train, t_train, X_test, y_test, t_test
+            )
 
         # --------------------------------------------------------------- #
         # (Re)fit and predict                                             #
         # --------------------------------------------------------------- #
 
-        results = metrics.get_train_info(
-            X_train, y_train, t_train, existing=results)
+        results = metrics.get_train_info(X_train, y_train, t_train, existing=results)
 
         if selected_indexes is not None or i == 0:
             fit_function(X_train, y_train)
@@ -295,9 +307,16 @@ def fit_predict_update(clf, X_train, X_tests,
                 continue
 
             kept_indexes, rejected_indexes = rejector.reject_wrapper(
-                clf, X_train, y_train, t_train,
-                X_test, y_test, t_test,
-                kept_indexes, rejected_indexes)
+                clf,
+                X_train,
+                y_train,
+                t_train,
+                X_test,
+                y_test,
+                t_test,
+                kept_indexes,
+                rejected_indexes,
+            )
 
         # cause bug that X_test doesn't change
         if kept_indexes is not None:
@@ -305,16 +324,15 @@ def fit_predict_update(clf, X_train, X_tests,
             y_pred = y_pred[kept_indexes]
             t_test = t_test[kept_indexes]
 
-            results['rejected'].append(rejected_indexes.size)
+            results["rejected"].append(rejected_indexes.size)
         else:
-            results['rejected'].append(0)
+            results["rejected"].append(0)
 
         # --------------------------------------------------------------- #
         # Calculate performance                                           #
         # --------------------------------------------------------------- #
 
-        results = metrics.calculate_metrics(
-            y_test, y_pred, existing=results)
+        results = metrics.calculate_metrics(y_test, y_pred, existing=results)
 
         # --------------------------------------------------------------- #
         # Select test observations for retraining (optional)              #
@@ -326,8 +344,8 @@ def fit_predict_update(clf, X_train, X_tests,
                 continue
 
             selected_indexes = selector.query_wrapper(
-                clf, X_train, y_train, t_train,
-                X_test, y_test, t_test, selected_indexes)
+                clf, X_train, y_train, t_train, X_test, y_test, t_test, selected_indexes
+            )
 
         if selected_indexes is not None:
             # Select observations for training using chosen indices
@@ -340,24 +358,30 @@ def fit_predict_update(clf, X_train, X_tests,
             y_train = np.hstack((y_train, y_selected))
             t_train = np.hstack((t_train, t_selected))
 
-            results['selected'].append(selected_indexes.size)
+            results["selected"].append(selected_indexes.size)
         else:
-            results['selected'].append(0)
+            results["selected"].append(0)
 
-        if 'y_preds' not in results:
-            results['y_tests'] = [y_test]
-            results['y_preds'] = [y_pred]
-            results['t_tests'] = [t_test]
+        if "y_preds" not in results:
+            results["y_tests"] = [y_test]
+            results["y_preds"] = [y_pred]
+            results["t_tests"] = [t_test]
         else:
-            results['y_tests'].append(y_test)
-            results['y_preds'].append(y_pred)
-            results['t_tests'].append(t_test)
+            results["y_tests"].append(y_test)
+            results["y_preds"].append(y_pred)
+            results["t_tests"].append(t_test)
 
     return results
 
 
-def predict(clf, X_tests, decision_threshold=None,
-            labels_only=False, predict_function=None, nproc=1):
+def predict(
+    clf,
+    X_tests,
+    decision_threshold=None,
+    labels_only=False,
+    predict_function=None,
+    nproc=1,
+):
     """Standalone prediction of a set of test periods.
 
     Takes a set of historically aware test periods and performs prediction
@@ -400,8 +424,10 @@ def predict(clf, X_tests, decision_threshold=None,
 
     """
     predict_function = (
-        utils.select_prediction_function(clf, labels_only=labels_only) if
-        predict_function is None else predict_function)
+        utils.select_prediction_function(clf, labels_only=labels_only)
+        if predict_function is None
+        else predict_function
+    )
 
     # `nproc = -1` becomes `nproc = mp.cpu_count() + (- 1)`, etc
     nproc = mp.cpu_count() + nproc if nproc < 0 else nproc
@@ -409,8 +435,7 @@ def predict(clf, X_tests, decision_threshold=None,
     # Predictions have no dependencies in this context, we can parallelize them
     if nproc > 1:
         with mp.Pool(nproc) as p:
-            y_preds = list(tqdm(
-                p.imap(predict_function, X_tests), total=len(X_tests)))
+            y_preds = list(tqdm(p.imap(predict_function, X_tests), total=len(X_tests)))
 
     # Avoid invoking parallelism and associated overhead for a single CPU
     else:
@@ -430,5 +455,3 @@ def predict(clf, X_tests, decision_threshold=None,
             y_preds[i] = np.array(y_scores > decision_threshold, dtype=int)
 
     return y_preds
-
-
