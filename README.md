@@ -1,100 +1,75 @@
-# TESSERACT
+This repository is a fork of the original Tesseract repository, which can be
+found here. 
 
-As malware evolves over time, the performance of malware detectors tends to degrade. Many solutions in the security literature fail to consider the time information associated with the samples while evaluating their classifier which can induce positive bias in the results. 
+Tesseract is a framework to make sure that classifiers for Android malware
+classification are not biased by enforcing the following three constraints: 
 
-This repository contains the source code for a prototype implementation of Tesseract.  
+1. Temporal Training Consistency
+2. Temporal Goodware/Malware Consistency
+3. Realistic Testing Classes Ratio
 
-Further details can be found in the paper *TESSERACT: Eliminating Experimental Bias in Malware Classification across Space and Time*. F.  Pendlebury, F. Pierazzi, R. Jordaney, J. Kinder, and L. Cavallaro.  USENIX Sec 2019. Check also `https://s2lab.cs.ucl.ac.uk/projects/tesseract` for up-to-date information on the project, e.g., a talk at USENIX Enigma 2019 at `https://www.usenix.org/conference/enigma2019/presentation/cavallaro`.
+Further details can be found in the paper *TESSERACT: Eliminating 
+Experimental Bias in Malware Classification across Space and Time*. F. 
+Pendlebury, F. Pierazzi, R. Jordaney, J. Kinder, and L. Cavallaro.  USENIX
+Sec 2019. Check also `https://s2lab.cs.ucl.ac.uk/projects/tesseract` for
+up-to-date information on the project, e.g., a talk at USENIX Enigma 2019
+at `https://www.usenix.org/conference/enigma2019/presentation/cavallaro`.
 
-If you end up using Tesseract as part of a project or publication, please include a citation of the latest preprint: 
+---
 
-```bibtex
-@inproceedings{pendlebury2019,
-   author = {Feargus Pendlebury, Fabio Pierazzi, Roberto Jordaney, Johannes Kinder, and Lorenzo Cavallaro},
-   title = {{TESSERACT: Eliminating Experimental Bias in Malware Classification across Space and Time}},
-   booktitle = {28th USENIX Security Symposium},
-   year = {2019},
-   address = {Santa Clara, CA},
-   publisher = {USENIX Association},
-   note = {USENIX Sec}
-}
-```
+# Reproducing TESSERACT results
 
-## Getting Started 
+This repository replicates the findings of Tesseract on the two established
+Android malware classifiers shown in the paper: 
 
-### Installation
+* Drebin 
+* MaMaDroid
 
-Tesseract requires Python 3 (preferably >= 3.5) as well as the statistical learning stack of NumPy, SciPy, and Scikit-learn. 
+To do this, we used the scripts provided by Tesseract with slight modifications.
+The results on Drebin can be found in
+`notebooks/tesseract-reproduce-drebin.ipynb` and the results on MaMaDroid in
+`tesserat-reproduce-mamadroid.ipynb`. 
 
-Create virtual environment (recommended) and install tesseract with script `setup.py`:
+We have also reproduced Figure 6 shown of the paper, showing [TODO]. The code
+for this is in `notebooks/tesseract-reproduce-figure6.ipynb`. 
 
-```shell
-python3 setup.py install 
-```
+## Using DexRay with TESSERACT 
 
-To download the data, run
+DexRay is an algorithm proposed in the paper *Dexray: a simple, yet
+effective deep learning approach to android malware detection based on image
+representation of bytecode.* (2021). Daoudi, N., Samhi, J., Kabore, A. K., Allix, K.,
+Bissyandé, T. F., & Klein, J. In Deployable Machine Learning for Security
+Defense: Second International Workshop, MLHat 2021, Virtual Event, August 15,
+2021, Proceedings 2 (pp. 81-106). Springer International Publishing.
 
-```shell
-make data
-```
+DexRay proposes a novel approach to Android malware detection by proposing an
+image classifier. The authors turned the Android APKs into 128*128 grayscale
+images representing the bytecode of the app source code. With these images, they
+trained a Keras classifier and report a [] F1-Score. 
 
-This should download the feature vectors and store them in
-`data/processed`. An example that shows how to reproduce the experiments can be found in
-`notebooks/reproduce-tesseract.ipynb`.
+In their paper, they have tested the classifier taking the first Tesseract
+constraint into consideration. Surprisingly, the F1-Score is even higher when
+enforcing Temporal Training Consistency. 
 
-### Usage 
+We have reproduced these results by obtaining the same APKs as used in the
+DexRay paper from AndroZoo, converting them into their grayscale bytecode image
+representation and training the DexRay algorithm with these. Due to resource
+constraints, we decreased our dataset to 50.000 APKs instead of [TODO] APKs. 
 
-Basic usage, dividing a dataset into time-aware sets and performing a time-aware evaluation. 
-More complex examples can be found in the `examples/` and `test/` directories. 
+We found results in the same direction as DexRay: When using Tesseract's
+time-aware train test split, the average F1-Score is higher than doing a random
+split. The code for this replication can be found in the `reproduce-dexray`
+folder. 
 
-```python
-from sklearn.svm import LinearSVC
-from tesseract import evaluation, temporal, metrics, mock
+### Reproduce-Dexray Folder Content 
 
-
-def main():
-    # Generate dummy predictors, labels and timestamps from Gaussians
-    X, y, t = mock.generate_binary_test_data(10000, '2014', '2016')
-
-    # Partition dataset
-    splits = temporal.time_aware_train_test_split(
-        X, y, t, train_size=12, test_size=1, granularity='month')
-
-    # Perform a timeline evaluation
-    clf = LinearSVC()
-    results = evaluation.fit_predict_update(clf, *splits)
-    
-    # View results 
-    metrics.print_metrics(results)
-    
-    # View AUT(F1, 24 months) as a measure of robustness over time 
-    print(metrics.aut(results, 'f1'))
-
-
-if __name__ == '__main__':
-    main()
-
-```
-
-## Running the tests 
-
-To run all unittests within the `test/` directory: 
-
-```shell 
-python -m unittest 
-```
-
-## Current Working State 
-
-Tesseract is still a research prototype and subject to breaking changes, although following a recent redesign we 
-expect such changes to be kept to a minimum. Due to this redesign there may also be discrepancies between the current 
-implementation and §6 of the Tesseract manuscript---although we are aiming to soon publish a short technical report
-that details the new design. We know this can be frustrating and thank you for your patience!
-
-If you encounter a bug or have a feature request, please feel free to contact the maintainer directly 
-at `lorenzo.cavallaro [at] ucl.ac.uk` and cc `fabio.pierazzi [at] kcl.ac.uk`.
-
-
-## Acknowledgements 
-
-This project has been generously sponsored by the UK EP/L022710/1 and EP/P009301/1 EPSRC research grants.
+* `/data`: contains X, y and temp numpy files containing the numpy arrays
+  corresponding to the grayscale images for our 50.000 APKs in X, the labels in
+  y and the timestamps in temp. 
+* `training_data_hashes.txt`: contains a list of the hashes of our 50.000 APKs
+  used 
+* `dexray_base/`: contains `X_train, X_test, y_train, y_test` files of numpy
+  arrays after random splitting (ie. the same arrays as in the parent folder's
+  X and y files, but split into training and testing data)
+* `dexray_tesseract/`: contains the same data as the `dexray_base/` folder but
+  using the tesseract split instead of a random split. 
