@@ -24,6 +24,10 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
+mamadroid:
+	wget -O ./data/raw/mamadroid-features.tar.gz https://www.dropbox.com/s/wl23fjvjtj2ncsg/mamadroid-features.tar.gz
+	tar -zxf ./data/raw/mamadroid-features.tar.gz --directory ./data/processed/
+	rm ./data/raw/mamadroid-features.tar.gz
 
 #################################################################################
 # Self Documenting Commands                                                     #
