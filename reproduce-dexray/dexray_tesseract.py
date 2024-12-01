@@ -27,90 +27,10 @@ from tesseract import evaluation, metrics, mock, temporal, spatial
 
 random_seed = 123456
 
-APK_METADATA_PATH = "/scratch/users/mbenali/metadata.csv"
 
 IMG_SIZE=128
-
-# Where to find the apk images in numpy format
-NUMPY_FILES_DIR = "/scratch/users/mbenali/download_apk/100k_download/npy"
 # Where to save all training and testing data after splitting 
-DATA_DIR = "./data/dexray_tesseract"
-# Define timeframe of relevant apps 
-YEAR_START = 2010
-YEAR_END = 2022
-
-
-def load_apk_metadata(file_path):
-    """Loads the APK metadata from the CSV file into a dictionary for quick lookups."""
-    metadata = {}
-    with open(file_path, 'r') as csv_file:
-        reader = csv.DictReader(csv_file, fieldnames=[
-            'sha256', 'sha1', 'md5', 'date_time', 'number1',
-            'package', 'number2', 'number3', 'dex_date', 'number4', 'source'
-        ])
-        csv_file.seek(0)  # Reset file pointer to the beginning
-        for row in reader:
-            metadata[row['sha256']] = row['dex_date']
-    return metadata
-
-def get_date_time_from_hash(search_hash, metadata):
-    """
-    Retrieves the `dex_date` for the given hash using preloaded metadata."""
-    if search_hash in metadata:
-        try:
-            return datetime.strptime(metadata[search_hash], '%Y-%m-%d %H:%M:%S')
-        except ValueError as e:
-            print(f"Error parsing date for {search_hash}: {e}")
-            return None
-    return None
-
-
-def assemble_arrays(metadata):
-    """Assembles numpy arrays from .npy files along with their labels and dates."""
-    X = []
-    y = []
-    temp = []
-
-    dirs = [NUMPY_FILES_DIR + '/malware', NUMPY_FILES_DIR + '/goodware']
-
-    for directory in dirs:
-        if not os.path.exists(directory):
-            continue
-
-        # List files and wrap with tqdm for a progress bar
-        files = [file for file in os.listdir(directory) if file.endswith('.npy')]
-        if "malware" in directory:
-            files = files[:10000]
-        else:
-            files = files[:40000]
-        for file in tqdm(files, desc=f"Processing {directory}"): 
-            # if stop >= 50000:
-            #     break
-            # stop += 1
-
-            if not file.endswith('.npy'):
-                continue
-
-            # Obtain the date
-            apk_date = get_date_time_from_hash(file[:-4], metadata)  # remove .npy
-
-            # Do not include if outside of date range
-            if apk_date is None or apk_date.year < YEAR_START or apk_date.year > YEAR_END:
-                continue
-
-            temp.append(apk_date)
-
-            filepath = os.path.join(directory, file)
-            array = np.load(filepath)
-            X.append(array.flatten())  # Flattening ensures all arrays are rows
-
-            # Obtain the label 
-            y.append(0 if 'goodware' in directory else 1)
-
-        print(f"Done with {directory}")
-
-
-    return np.stack(X), np.array(y), np.array(temp)
+DATA_DIR = "./data/dexray_tesseract_10_percent_malware"
 
 
 def main():
@@ -135,10 +55,10 @@ def main():
         return (probabilities > 0.5).astype(int).flatten()  # Convert to 1D array of labels
 
     ## Start of actual main
-    print("Getting metadata to assemble X, y and temp ...")
-    metadata = load_apk_metadata(APK_METADATA_PATH)
     print("Assembling X, y and temp ...")
-    X, y, temp = assemble_arrays(metadata)
+    X = np.load("data/X.npy", allow_pickle=True)
+    y = np.load("data/y.npy", allow_pickle=True)
+    temp = np.load("data/temp.npy", allow_pickle=True)
 
     # Replicate the DexRay model
     model_architecture = Sequential()
@@ -166,7 +86,7 @@ def main():
     # Get Tesseract test and train split 
     print("Getting Tesseract time aware splits ...")
     splits = temporal.time_aware_train_test_split(
-        X, y, temp, train_size=12, test_size=2, granularity='month'
+        X, y, temp, train_size=12, test_size=1, granularity='month'
     )
 
     X_train, X_test, y_train, y_test, t_train, t_test = splits
@@ -189,7 +109,7 @@ def main():
     )
     print(results)
 
-    model.save("/scratch/users/mbenali/tesseract-ml-release/model-50k-tesseract")
+    model.save("../models/model-50k-tesseract-10-percent-malware")
 
 if __name__ == "__main__":
     main()

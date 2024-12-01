@@ -9,18 +9,11 @@ from tensorflow.keras.models import Sequential
 from sklearn.model_selection import train_test_split
 
 
-random_seed = 123456
-
-APK_METADATA_PATH = "utils/metadata.csv"
-
 IMG_SIZE = 128
 
 # Where to save all training and testing data after splitting
 DATA_DIR = "./data"
-NUMPY_FILES_DIR = "./utils/100k_download/npy"
-# Define timeframe of relevant apps
-YEAR_START = 2010
-YEAR_END = 2022
+DEXRAY_WITHOUT_TESSERACT_DIR = "./data/dexray_without_tesseract_10_percent_malware"
 
 
 def assemble_arrays():
@@ -40,13 +33,14 @@ def assemble_arrays():
 
     # Split into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.1, random_state=42
     )
 
-    np.save(os.path.join(DATA_DIR, "dexray_without_tesseract/X_train.npy"), X_train)
-    np.save(os.path.join(DATA_DIR, "dexray_without_tesseract/X_test.npy"), X_test)
-    np.save(os.path.join(DATA_DIR, "dexray_without_tesseract/y_train.npy"), y_train)
-    np.save(os.path.join(DATA_DIR, "dexray_without_tesseract/y_test.npy"), y_test)
+    os.makedirs(DEXRAY_WITHOUT_TESSERACT_DIR, exist_ok=True)
+    np.save(os.path.join(DEXRAY_WITHOUT_TESSERACT_DIR, "X_train.npy"), X_train)
+    np.save(os.path.join(DEXRAY_WITHOUT_TESSERACT_DIR, "X_test.npy"), X_test)
+    np.save(os.path.join(DEXRAY_WITHOUT_TESSERACT_DIR, "y_train.npy"), y_train)
+    np.save(os.path.join(DEXRAY_WITHOUT_TESSERACT_DIR, "y_test.npy"), y_test)
 
     return X_train, X_test, y_train, y_test
 
@@ -94,7 +88,7 @@ def main():
         verbose=2,
     )
 
-    model.save("../models/model-50k-without-tesseract")
+    model.save("../models/model-50k-without-tesseract-10-percent-malware")
 
 
 if __name__ == "__main__":
