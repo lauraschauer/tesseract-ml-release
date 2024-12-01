@@ -16,10 +16,12 @@ This repository replicates the findings of Tesseract on two established Android 
 
 - **Drebin**  
 - **MaMaDroid**
+- **Deep Learning**
 
-To reproduce `Figure 6 - Time Decay`, which demonstrates the performance of these algorithms over a 22-month testing period, we used the scripts provided by Tesseract with slight modifications:  
+To reproduce `Figure 5 - Time Decay`, which demonstrates the performance of these algorithms over a 22-month testing period, we used the scripts provided by Tesseract with slight modifications:  
 - Results for Drebin performance can be found in `notebooks/tesseract-reproduce-drebin.ipynb`.  
 - Results for MaMaDroid performance can be found in `notebooks/tesseract-reproduce-mamadroid.ipynb`.  
+- Results for Deep NN performance can be found in `notebooks/tesseract-reproduce-dl.ipynb`.  
 
 Additionally, we replicated `Figure 6 - Tuning Improvement`, which shows the impact of different malware percentages during the training period on each algorithm. This analysis is available in `notebooks/tesseract-reproduce-figure6.ipynb`.
 
@@ -33,9 +35,9 @@ DexRay introduces a novel approach to Android malware detection by converting An
 
 Interestingly, the paper tested classifiers using the first Tesseract constraint (Temporal Training Consistency) and found that F1-Score improved when this constraint was enforced.  
 
-We replicated these results by obtaining 100K APK hashes used from the AndroZoo dataset. we created scripts that can be found in `reproduce-dexray/utils`to download the APKs, convert them to images, and process them into numpy arrays (requiring 4.2 TB of data, thank you HPC). Due to resource constraints and the time it took to train the model, we reduced the dataset from 100K to 50K APKs.  
+We replicated these results by obtaining 100K APK hashes used from the AndroZoo dataset. We created scripts that can be found in `reproduce-dexray/utils` to download the APKs, convert them to images, and process them into numpy arrays (requiring 4.2 TB of data, thank you HPC). Due to resource constraints and the time it took to train the model, we reduced the dataset from 100K to 50K APKs.  
 
-Our findings align with DexRay's, using Tesseract's time-aware train-test split yielded higher average F1-Scores compared to random splits. The code to create DexRay models is in `reproduce-dexray`, and the demonstration of results is available in `notebooks/tesseract-reproduce-dexray.ipynb`.
+Our findings align with DexRay's when using 20% malware in training and testing data, using Tesseract's time-aware train-test split yielded higher average F1-Scores compared to random splits. When using 10% malware in the training and testing set, DexRay performs worse on the time-aware split. The code to create DexRay models is in `reproduce-dexray`, and the demonstration of results is available in `notebooks/tesseract-reproduce-dexray.ipynb`.
 
 ---
 
